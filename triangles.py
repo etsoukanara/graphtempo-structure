@@ -1,159 +1,291 @@
 
-# ------------------------------------------------------------------
-
-# for each node in the nodes set, finds and keeps in list the edges with node as first element
-# and finds and keeps in another list the edges with node as second element
-# next finds all the node combinations between the second elements of the first list
-# and the first element of the second list
-# creates a list with all combinations of first and third edge and adds the second list if appropriate
-# edge in the combinations list
-
 import pandas as pd
 import itertools
 import networkx as nx
-
-edges_df = pd.read_csv('C:/Users/Lila/Desktop/GraphTempo_APP/datasets/dblp_dataset/edges.csv', sep=' ', index_col=[0,1])
-#edges_df = pd.read_csv('C:/Users/Lila/Desktop/GraphTempo_APP/datasets/movielens_dataset/edges.csv', sep=' ', index_col=[0,1])
-
-nodes_triangles_dict = {}
-for i in range(len(edges_df.columns)):
-    edges = edges_df.iloc[:,i][edges_df.iloc[:,i]!=0]
-    #nodes = list(set([i for e in edges.index.values.tolist() for i in e]))
-    nodes_left = set(edges.index.get_level_values('Left').values.tolist())
-    nodes_right = set(edges.index.get_level_values('Right').values.tolist())
-    nodes = list(set([e for e in nodes_left if e in nodes_right]))
-    edges = edges.reset_index().iloc[:,:-1]
- 
-    triangles = []
-    for node in nodes:
-        df_first_edges = edges.loc[edges.Left==node]
-        if not df_first_edges.empty:
-            df_third_edges = edges.loc[edges.Right==node]
-            if not df_third_edges.empty:
-                second_edges_first = df_first_edges.Right.values.tolist()
-                second_edges_third = df_third_edges.Left.values.tolist()
-                second_edges_domain = list(itertools.product(second_edges_first, second_edges_third))
-                first_edges_domain = df_first_edges.values.tolist()
-                first_edges_domain = [tuple(e) for e in first_edges_domain]
-                third_edges_domain = df_third_edges.values.tolist()
-                third_edges_domain = [tuple(e) for e in third_edges_domain]
-                
-                triangles_domain = list(
-                    itertools.product(
-                        first_edges_domain,
-                        third_edges_domain
-                        )
-                    )
-                edges_lst = set([tuple(e) for e in edges.values.tolist()])
-                for triangle in triangles_domain:
-                    second = (triangle[0][1],triangle[1][0])
-                    if second in edges_lst:
-                        #triangle_sorted = tuple(sorted(triangle[0]+triangle[1][:1]))
-                        triangle_final = triangle[0]+triangle[1][:1]
-                        triangles.append(triangle_final)
-    
-    triangles = list(set(sorted(triangles)))
-    
-    ones = [0]*len(edges_df.columns)
-    ones[i] = 1
-    for t in triangles:
-        if t not in nodes_triangles_dict.keys():
-            nodes_triangles_dict[t] = ones
-        else:
-            nodes_triangles_dict[t][i] = 1
-
-
-tria_df = pd.DataFrame(nodes_triangles_dict.values(), index=nodes_triangles_dict.keys())
-tria_df = tria_df.sort_index()
-
-tria_df.index.names = ['id1','id2','id3']
-
-tria_df2 = tria_df.copy()
-tria_df2.index = tria_df.index.tolist()
-# save to csv file
-tria_df2.reset_index().to_csv('triangles_datasets/dblp/nodes_triangles.csv', sep=',', index=None)
-
-
-
-# create attributes
-
-# replace with attributes
-time_inv_df = pd.read_csv('C:/Users/Lila/Desktop/GraphTempo_APP/datasets/dblp_dataset/time_invariant_attr.csv', sep=' ', index_col=0)
-#time_inv_df = pd.read_csv('C:/Users/Lila/Desktop/GraphTempo_APP/datasets/movielens_dataset/time_invariant_attr.csv', sep=' ', index_col=0)
-time_inv_df.gender.replace(['female','male'], ['F','M'],inplace=True)
-
-# triangles to df
-triangles_df = pd.DataFrame(tria_df.reset_index().iloc[:,:3])
-
-attr_triangles = []
-for i in range(3):
-    tmp = time_inv_df.loc[:,'gender'].to_frame().loc[triangles_df.iloc[:,i],:]['gender'].tolist()
-    attr_triangles.append(tmp)
-
-attr_triangles = list(zip(*attr_triangles))
-attr_triangles = [''.join(sorted(i)) for i in attr_triangles]
-
-attr_triangles = pd.DataFrame(attr_triangles)
-
-attr_triangles.index = tria_df.index
-# or
-attr_triangles.index = tria_df.index.tolist()
-
-# save to csv file
-attr_triangles.reset_index().to_csv('triangles_datasets/dblp/attr_triangles.csv', sep=',', index=None)
-
-# create edges
-edges_triangles_dict = {}
-for i in range(len(edges_df.columns)):
-    triangles = tria_df.iloc[:,i][tria_df.iloc[:,i]!=0].index.tolist()
-
-    tria_edges = []
-    for ind,tria in enumerate(triangles[:-1]):
-        combs = list(itertools.product([tria], triangles[ind+1:]))
-        for c in combs:
-            if len(set(c[0] + c[1])) < 6:
-                tria_edges.append(c)
-            else:
-                all_edges = [(k,j) for k in c[0] for j in c[1]]
-                all_edges_rvsd = [k[::-1] for k in all_edges]
-                if any(e in edges_lst for e in all_edges+all_edges_rvsd):
-                    tria_edges.append(c)
-
-    tria_edges = list(set(sorted(tria_edges)))
-    
-    ones = [0]*len(edges_df.columns)
-    ones[i] = 1
-    for t in tria_edges:
-        if t not in edges_triangles_dict.keys():
-            edges_triangles_dict[t] = ones
-        else:
-            edges_triangles_dict[t][i] = 1
-
-edges_tria_df = pd.DataFrame(edges_triangles_dict.values(), index=edges_triangles_dict.keys())
-edges_tria_df = edges_tria_df.sort_index()
-
-edges_tria_df.index.names = ['Left','Right']
-
-# save to csv file
-edges_tria_df.reset_index().to_csv('triangles_datasets/dblp/edges_triangles.csv', sep=',', index=None)
-
-
-# test on aggregation algorithms
-# read files
-edges_df = pd.read_csv('triangles_datasets/dblp/edges_triangles.csv', sep=',', index_col=[0,1])
-nodes_df = pd.read_csv('triangles_datasets/dblp/nodes_triangles.csv', sep=',', index_col=0)
-time_invariant_attr = pd.read_csv('triangles_datasets/dblp/attr_triangles.csv', sep=',', index_col=0)
-time_invariant_attr.columns = ['gender']
-
+import numpy as np
+import time
 import sys
 sys.path.insert(1, 'graphtempo')
 from graphtempo import *
 
 
-interval = edges_df.columns
-res, tia = Union_Static(nodes_df,edges_df,time_invariant_attr,interval)
-agg = Aggregate_Static_Dist(res,tia,stc_attrs=['gender'])
-# difference
-res, tia = Diff_Static(nodes_df,edges_df,time_invariant_attr,['0'],['1'])
-agg_tmp = Aggregate_Static_All(res,tia,['gender'])
-agg = Diff_Post_Agg_Static(agg_tmp,['gender'])
+edges_df = pd.read_csv('C:/Users/Lila/Desktop/PROJECT_2.1_tempoGRAPHer_DEMO/GraphTempo_APP/datasets/dblp_dataset/edges.csv', sep=' ', index_col=[0,1])
+#edges_df = pd.read_csv('C:/Users/Lila/Desktop/PROJECT_2.1_tempoGRAPHer_DEMO/GraphTempo_APP/datasets/school_dataset/edges.csv', sep=' ', index_col=[0,1])
+#####
+# remove self loop found
+idx_to_keep = []
+for i in edges_df.index.tolist():
+    if i[0] != i[1]:
+        idx_to_keep.append(i)
+edges_df = edges_df.loc[idx_to_keep,:]
+
+for i in range(2000,2021):
+    x = edges_df.loc[:,str(i)][edges_df.loc[:,str(i)]!=0].index.tolist()
+    G = nx.Graph()
+    G.add_edges_from(x)
+    G0 = G.subgraph(max(nx.connected_components(G), key=len))
+    nodes_G0 = list(G0.nodes)
+    edges_G0 = list(G0.edges)
+    print(i,': nodes in lcc', len(nodes_G0), 'edges in lcc', len(edges_G0))
+
+######################
+
+# =============================================================================
+# # create nodes
+# nodes_undirected_triangles_dict = {}
+# for i in range(len(edges_df.columns)):
+#     edges = edges_df.iloc[:,i][edges_df.iloc[:,i]!=0].index.tolist()
+#     edges = [tuple(sorted(e)) for e in edges]
+#     edges_set = set(edges)
+#     nodes = sorted(list(set([i for e in edges for i in e])))
+#     
+#     triangles_un_new = []
+#     for edge in edges:
+#         for node in nodes:
+#             if tuple(sorted((edge[1],node))) in edges_set and tuple(sorted((node,edge[0]))) in edges_set:
+#                 t = tuple(sorted((edge[0],edge[1],node)))
+#                 if t not in set(triangles_un_new):
+#                     triangles_un_new.append(t)
+# 
+#     ones = [0]*len(edges_df.columns)
+#     ones[i] = 1
+#     for t in triangles_un_new:
+#         if t not in nodes_undirected_triangles_dict.keys():
+#             nodes_undirected_triangles_dict[t] = ones
+#         else:
+#             nodes_undirected_triangles_dict[t][i] = 1
+# 
+# 
+# tr_nodes_df = pd.DataFrame(nodes_undirected_triangles_dict.values(), index=nodes_undirected_triangles_dict.keys())
+# tr_nodes_df = tr_nodes_df.sort_index()
+# tr_nodes_df.index.names = ['id1','id2','id3']
+# 
+# tr_nodes_df2 = tr_nodes_df.copy()
+# tr_nodes_df2.index = tr_nodes_df.index.tolist()
+# #tr_nodes_df2.reset_index().to_csv('triangles_datasets/undirected/dblp/nodes_triangles.csv', sep=',', index=None)
+# 
+# tr_nodes_df = pd.read_csv('triangles_datasets/undirected/dblp/nodes_triangles.csv', sep=',', index_col=[0])
+# =============================================================================
+
+############################
+
+# NEW nodes
+# create nodes
+nodes_undirected_triangles_dict = {}
+nodes_undirected_triangles_list = []
+for i in range(len(edges_df.columns)):
+    edges = edges_df.iloc[:,i][edges_df.iloc[:,i]!=0].index.tolist()
+    edges = [tuple(sorted(e)) for e in edges]
+    edges_set = set(edges)
+    nodes = sorted(list(set([i for e in edges for i in e])))
+    
+    triangles_un_new = []
+    for edge in edges:
+        for node in nodes:
+            if tuple(sorted((edge[1],node))) in edges_set and tuple(sorted((node,edge[0]))) in edges_set:
+                t = tuple(sorted((edge[0],edge[1],node)))
+                if t not in set(triangles_un_new):
+                    triangles_un_new.append(t)
+                    
+    nodes_triangles_undirected_df = pd.DataFrame([], index=triangles_un_new)
+
+    for j in range(len(edges_df.columns)):
+        if j == i :
+            tmp = [1]*len(nodes_triangles_undirected_df)
+            nodes_triangles_undirected_df['col'+str(j)] = tmp
+        else:
+            tmp = [0]*len(nodes_triangles_undirected_df)
+            nodes_triangles_undirected_df['col'+str(j)] = tmp
+        del tmp
+    nodes_triangles_undirected_df.index.name = 'id'
+    nodes_undirected_triangles_list.append(nodes_triangles_undirected_df)
+
+tr_nodes_df = pd.concat(nodes_undirected_triangles_list).groupby(['id']).sum()
+
+cols = [str(i) for i in range(2000,2021)]
+tr_nodes_df.columns = cols
+tr_nodes_df.sort_index(inplace=True)
+
+tr_nodes_df.to_csv('C:/Users/Lila/Desktop/PROJECT_2.2_EXT/triangles_datasets/undirected/dblp/nodes.csv', sep=',')
+
+#tr_nodes_df = pd.read_csv('C:/Users/Lila/Desktop/PROJECT_2.2_EXT/triangles_datasets/undirected/dblp/nodes.csv', sep=',', index_col=0)
+
+
+
+# create edges on each time point
+
+for i in range(len(edges_df.columns)):
+    print(i)
+    triangles = tr_nodes_df.iloc[:,i][tr_nodes_df.iloc[:,i]!=0].index.tolist()
+    #triangles = sorted([eval(triangle) for triangle in triangles])
+    triangles = sorted(triangles)
+    nodes_in_triangles = sorted(list(set([j for triangle in triangles for j in triangle])))
+    
+    edges_dict = {}
+    for idx,node in enumerate(nodes_in_triangles):
+        for ind,triangle in enumerate(triangles):
+            if node in set(triangle):
+                edges_dict.setdefault(node,[]).append(tuple(triangle))
+    
+    result = []
+    for node,triangle_list in edges_dict.items():
+        if len(triangle_list) > 1:
+            result.extend(itertools.combinations(triangle_list, 2))
+    
+    result = sorted(list(set(result)))
+    print(len(result))
+    
+    edges_triangles_undirected_df = pd.DataFrame(result)
+    result = []
+    edges_triangles_undirected_df.to_csv('triangles_datasets/undirected/dblp/prepro/data'+str(i)+'.csv', sep=',', index=None)
+
+
+# add 0s and 1s for the dataframe of each time point
+
+for i in range(len(edges_df.columns)):
+    print('i: ',i)
+    tria_edges_undirected = pd.read_csv('triangles_datasets/undirected/dblp/prepro/data'+str(i)+'.csv', sep=',')
+    tria_edges_undirected.columns = ['Left','Right']
+    tria_edges_undirected = tria_edges_undirected.set_index(['Left','Right'])
+    for j in range(len(edges_df.columns)):
+        print(j)
+        if j == i :
+            tmp = [1]*len(tria_edges_undirected)
+            tria_edges_undirected['col'+str(j)] = tmp
+        else:
+            tmp = [0]*len(tria_edges_undirected)
+            tria_edges_undirected['col'+str(j)] = tmp
+        del tmp
+    tria_edges_undirected.to_csv('triangles_datasets/undirected/dblp/prepro_2/data'+str(i)+'.csv', sep=',')
+    
+
+list_of_dfs = []  
+for i in range(len(edges_df.columns)):
+    print('i: ',i)
+    list_of_dfs.append(
+        pd.read_csv(
+            'triangles_datasets/undirected/dblp/prepro_2/data'+str(i)+'.csv', 
+            sep=',', 
+            index_col=['Left','Right'],
+            dtype='category'
+            )
+        )
+    list_of_dfs[-1].sort_index(inplace=True)
+
+list_of_dfs = [df.astype('int8') for df in list_of_dfs]
+
+tr_edges_df = pd.concat(list_of_dfs).groupby(['Left','Right']).sum()
+cols = [str(i) for i in range(2000,2021)]
+tr_edges_df.columns = cols
+tr_edges_df.sort_index(inplace=True)
+
+# save to csv
+tr_edges_df.to_csv('triangles_datasets/undirected/dblp/edges_triangles.csv', sep=',')
+
+# read csv
+tr_edges_df = pd.read_csv(
+    'triangles_datasets/undirected/dblp/edges.csv', sep=',', index_col=['Left','Right'],)
+
+#############################
+
+
+# create gender attributes | static
+
+time_invariant_attr = pd.read_csv('C:/Users/Lila/Desktop/PROJECT_2.1_tempoGRAPHer_DEMO/GraphTempo_APP/datasets/dblp_dataset/time_invariant_attr.csv', sep=' ', index_col=0)
+#time_invariant_attr = pd.read_csv('C:/Users/Lila/Desktop/PROJECT_2.1_tempoGRAPHer_DEMO/GraphTempo_APP/datasets/school_dataset/time_invariant_attr.csv', sep=' ', index_col=0)
+time_invariant_attr.gender.replace(['female','male'], ['F','M'],inplace=True)
+
+idx = tr_nodes_df.index.tolist()
+#idx = [eval(i) for i in idx]
+multi_idx = pd.MultiIndex.from_tuples(idx)
+tr_nodes_df.index = multi_idx
+tr_nodes_df.columns = [str(i) for i in range(2000,2021)]
+
+# triangles to df
+triangles_undirected_df = pd.DataFrame(tr_nodes_df.reset_index().iloc[:,:3])
+attr_triangles = []
+for i in range(3):
+    tmp = time_invariant_attr.loc[:,'gender'].to_frame().loc[triangles_undirected_df.iloc[:,i],:]['gender'].tolist()
+    attr_triangles.append(tmp)
+attr_triangles = list(zip(*attr_triangles))
+attr_triangles = [''.join(sorted(i)) for i in attr_triangles]
+attr_triangles = pd.DataFrame(attr_triangles)
+#attr_triangles.index = tr_nodes_df.index
+# or
+attr_triangles.index = tr_nodes_df.index.tolist()
+attr_triangles.columns = ['gender']
+attr_triangles.to_csv('triangles_datasets/undirected/dblp/time_invariant_attr.csv', sep=',')
+
+############################
+
+# create #publications attributes | time-varying
+
+time_variant_attr = pd.read_csv('C:/Users/Lila/Desktop/PROJECT_2.1_tempoGRAPHer_DEMO/GraphTempo_APP/datasets/dblp_dataset/time_variant_attr.csv', sep=' ', index_col=0)
+
+idx = tr_nodes_df.index.tolist()
+idx = [eval(i) for i in idx]
+multi_idx = pd.MultiIndex.from_tuples(idx)
+tr_nodes_df.index = multi_idx
+tr_nodes_df.columns = [str(i) for i in range(2000,2021)]
+
+# merge # of publications ('121')
+triangles_undirected_df = pd.DataFrame(tr_nodes_df.reset_index().iloc[:,:3])
+attr_triangles_var = []
+for j in time_variant_attr.columns:
+    attr_tr_var = []
+    for i in range(3):
+        tmp = time_variant_attr.loc[:,j].to_frame().loc[triangles_undirected_df.iloc[:,i],:][j].tolist()
+        tmp = [str(i) for i in tmp]
+        attr_tr_var.append(tmp)
+    attr_tr_var = list(zip(*attr_tr_var))
+    attr_tr_var = ['_'.join(sorted(i)) for i in attr_tr_var]
+    attr_tr_var = [0 if i[0]=='0' else i for i in attr_tr_var]
+    attr_triangles_var.append(attr_tr_var)
+
+attr_triangles_var = pd.DataFrame(attr_triangles_var).T
+attr_triangles_var.index = tr_nodes_df.index.tolist()
+attr_triangles_var.columns = tr_nodes_df.columns
+attr_triangles_var = tr_nodes_df.where(tr_nodes_df==0, other=attr_triangles_var)
+attr_triangles_var.index = attr_triangles_var.index.tolist()
+attr_triangles_var.to_csv('triangles_datasets/undirected/dblp/time_variant_attr_str.csv', sep=',')
+
+# sum # of publications ('121' --> 4)
+triangles_undirected_df = pd.DataFrame(tr_nodes_df.reset_index().iloc[:,:3])
+attr_triangles_var = []
+for j in time_variant_attr.columns:
+    attr_tr_var = []
+    for i in range(3):
+        tmp = time_variant_attr.loc[:,j].to_frame().loc[triangles_undirected_df.iloc[:,i],:][j].tolist()
+        attr_tr_var.append(tmp)
+    attr_tr_var = list(zip(*attr_tr_var))
+    attr_tr_var = [sum(i) if i[0]!=0 and i[1]!=0 and i[2]!=0 else 0 for i in attr_tr_var]
+    attr_triangles_var.append(attr_tr_var)
+
+attr_triangles_var = pd.DataFrame(attr_triangles_var).T
+attr_triangles_var.index = tr_nodes_df.index.tolist()
+attr_triangles_var.columns = tr_nodes_df.columns
+attr_triangles_var = tr_nodes_df.where(tr_nodes_df==0, other=attr_triangles_var)
+attr_triangles_var.index = tr_nodes_df.index.tolist()
+attr_triangles_var.to_csv('triangles_datasets/undirected/dblp/time_variant_attr.csv', sep=',')
+
+###########################
+
+# =============================================================================
+# # test on aggregation algorithms
+# # read files
+# tr_edges_df = pd.read_csv('triangles_datasets/undirected/dblp/edges_triangles.csv', sep=',', index_col=[0,1])
+# tr_nodes_df = pd.read_csv('triangles_datasets/undirected/dblp/nodes_triangles.csv', sep=',', index_col=0)
+# tr_time_invariant_attr = pd.read_csv('triangles_datasets/undirected/dblp/attr_triangles.csv', sep=',', index_col=0)
+# tr_time_invariant_attr.columns = ['gender']
+# #tr_nodes_df = tr_nodes_df.iloc[:,:15]
+# tr_nodes_df.columns = [str(i) for i in range(2000,2021)]
+# 
+# interval = tr_edges_df.columns
+# res, tia = Union_Static(tr_nodes_df,tr_edges_df,tr_time_invariant_attr,interval)
+# agg = Aggregate_Static_Dist(res,tia,stc_attrs=['gender'])
+# # difference
+# res, tia = Diff_Static(tr_nodes_df,tr_edges_df,tr_time_invariant_attr,['0'],['1'])
+# agg_tmp = Aggregate_Static_All(res,tia,['gender'])
+# agg = Diff_Post_Agg_Static(agg_tmp,['gender'])
+# =============================================================================
+
