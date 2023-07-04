@@ -7,7 +7,7 @@ The code repository for the following paper:
 
 ## Exploring....
 
-Evangelia Tsoukanara, Georgia Koloniari, and Evaggelia Pitoura. Skyline-based Termporal Graph Exploration.
+Evangelia Tsoukanara, Georgia Koloniari, and Evaggelia Pitoura. Exploring.....
 
 ## Abstract
 > 
