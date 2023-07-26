@@ -25,11 +25,11 @@ for i in range(2000,2021):
     edges_G0 = list(G0.edges)
     print(i,': nodes in lcc', len(nodes_G0), 'edges in lcc', len(edges_G0))
 
-nodes_df = pd.read_csv('C:/Users/Lila/Desktop/PROJECT_2.1_tempoGRAPHer_DEMO/GraphTempo_APP/datasets/dblp_dataset/nodes.csv', sep=' ', index_col=0)
-time_invariant_attr = pd.read_csv('C:/Users/Lila/Desktop/PROJECT_2.1_tempoGRAPHer_DEMO/GraphTempo_APP/datasets/dblp_dataset/time_invariant_attr.csv', sep=' ', index_col=0)
+nodes_df = pd.read_csv('datasets/dblp_dataset/nodes.csv', sep=' ', index_col=0)
+time_invariant_attr = pd.read_csv('datasets/dblp_dataset/time_invariant_attr.csv', sep=' ', index_col=0)
 time_invariant_attr.gender.replace(['female','male'], ['F','M'],inplace=True)
 
-time_variant_attr = pd.read_csv('C:/Users/Lila/Desktop/PROJECT_2.1_tempoGRAPHer_DEMO/GraphTempo_APP/datasets/dblp_dataset/time_variant_attr.csv', sep=' ', index_col=0)
+time_variant_attr = pd.read_csv('datasets/dblp_dataset/time_variant_attr.csv', sep=' ', index_col=0)
 
 ######################
 
