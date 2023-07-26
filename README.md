@@ -1,7 +1,7 @@
-# graphtempo-triangles
+# graphtempo-structure
 Extended version of GraphTempo paper implementing structure aggregation
 
-# graphtempo-triangles
+# graphtempo-structure
 
 The code repository for the following paper:
 
