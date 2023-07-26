@@ -1,7 +1,3 @@
-#
-# 1. triangles on original graph
-# 2. triangles on graph output of the operation 
-
 import pandas as pd
 import itertools
 import networkx as nx
