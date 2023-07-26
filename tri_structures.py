@@ -8,7 +8,6 @@ import networkx as nx
 import numpy as np
 import time
 import sys
-sys.path.insert(1, 'graphtempo')
 from graphtempo import *
 
 
