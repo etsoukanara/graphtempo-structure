@@ -1,5 +1,6 @@
 # graphtempo-structure
 Extended version of the GraphTempo framework implementing structure aggregation
+
 The code repository for the following paper:
 
 ## The GraphTempo Framework for Exploring the Evolution of a Graph through Pattern Aggregation
