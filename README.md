@@ -1,13 +1,10 @@
 # graphtempo-structure
 Extended version of the GraphTempo framework implementing structure aggregation
-
-# graphtempo-structure
-
 The code repository for the following paper:
 
 ## The GraphTempo Framework for Exploring the Evolution of a Graph through Pattern Aggregation
 
-Evangelia Tsoukanara, Georgia Koloniari, and Evaggelia Pitoura. The GraphTempo Framework for Exploring the Evolution of a Graph through Pattern Aggregation
+Evangelia Tsoukanara, Georgia Koloniari, Evaggelia Pitoura, and Peter Triantafillou. The GraphTempo Framework for Exploring the Evolution of a Graph through Pattern Aggregation.
 
 ## Abstract
 > 
